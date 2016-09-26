@@ -1,0 +1,11 @@
+#!/system/bin/sh
+echo --Route--
+busybox route
+echo --netcfg ppp--
+netcfg | grep ppp
+echo --ps mtpd--
+ps | grep mtpd
+echo --ps pppd--
+ps | grep pppd
+echo --Props--
+getprop | grep net

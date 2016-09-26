@@ -1,0 +1,15 @@
+Changelog
+
+*6/6/2012:
+1. Major improvements, not the to beauty of the
+code, but in terms of functionality.
+2. Can now connect to VPN when on WiFi network.
+3. DNS servers are properly setup and reset 
+before VPN connection and reset after connection 
+is no longer being used.
+
+*6/2/2012:
+1. Changed behavior of disconnect from VPN method - 
+should never fail, only return true, because if 
+the process is no longer running, VPN died on its
+own already, and should be allowed to be restarted.

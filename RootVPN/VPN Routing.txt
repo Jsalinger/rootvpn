@@ -1,0 +1,99 @@
+mtpd rmnet0 pptp <SERVER> 1723 name <VPNUSER> password <PASSWORD> linkname vpn refuse-eap nodefaultroute usepeerdns idle 1800 mtu 1400 mru 1400 +mppe
+route add default dev ppp0
+google's IP: 74.125.225.110
+
+NO VPN - Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+default         10.76.44.1      0.0.0.0         UG    0      0        0 rmnet0
+10.76.44.0      *               255.255.255.0   U     0      0        0 rmnet0
+10.76.44.1      *               255.255.255.255 UH    0      0        0 rmnet0
+
+default via 10.76.44.1 dev rmnet0
+10.76.44.0/24 dev rmnet0  proto kernel  scope link  src 10.76.44.253
+10.76.44.1 dev rmnet0  scope link
+
+STOCK VPN - Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+default         10.76.44.1      0.0.0.0         UG    0      0        0 rmnet0
+10.76.44.0      *               255.255.255.0   U     0      0        0 rmnet0
+10.76.44.1      *               255.255.255.255 UH    0      0        0 rmnet0
+default         *               128.0.0.0       U     0      0        0 ppp0
+128.0.0.0       *               128.0.0.0       U     0      0        0 ppp0
+192.168.0.1     *               255.255.255.255 UH    0      0        0 ppp0
+
+default via 10.76.44.1 dev rmnet0
+10.76.44.0/24 dev rmnet0  proto kernel  scope link  src 10.76.44.253
+10.76.44.1 dev rmnet0  scope link
+0.0.0.0/1 dev ppp0  scope link
+128.0.0.0/1 dev ppp0  scope link
+192.168.0.1 dev ppp0  proto kernel  scope link  src 192.168.0.245
+
+CUSTOM VPN - Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+default         10.76.44.1      0.0.0.0         UG    0      0        0 rmnet0
+10.76.44.0      *               255.255.255.0   U     0      0        0 rmnet0
+10.76.44.1      *               255.255.255.255 UH    0      0        0 rmnet0
+default         *               0.0.0.0         U     0      0        0 ppp0
+
+192.168.0.1     *               255.255.255.255 UH    0      0        0 ppp0
+
+default via 10.76.44.1 dev rmnet0
+10.76.44.0/24 dev rmnet0  proto kernel  scope link  src 10.76.44.253
+10.76.44.1 dev rmnet0  scope link
+default dev ppp0  scope link
+
+192.168.0.1 dev ppp0  proto kernel  scope link  src 192.168.0.245
+
+COMMANDS:
+ip route add 0.0.0.0/1 dev ppp0 - gets line 4&6 of stock VPN table correct
+ip route add 128.0.0.0/1 dev ppp0 - adds another line similar to 5 - no ping
+
+getprop | grep dns
+[net.dns1]: [172.16.145.103]
+[net.dns2]: [172.16.145.103]
+[net.dnschange]: [5]
+[net.rmnet0.dns1]: [172.16.145.103]
+[net.rmnet0.dns2]: [172.16.145.103]
+[net.rmnet0.gw]: [10.207.15.1]
+
+FIRST need to do a:
+setprop net.dns1 192.168.0.1
+
+THEN when ending connection:
+setprop net.dns2 172.16.145.103 (or whatever is set in net.rmnet0.dns1)
+
+This file appears to set net.dns1
+/frameworks/base/services/java/com/android/server/ConnectivityService.java
+
+Deleting a default route:
+0.0.0.0/1 dev ppp0  scope link
+shell@android:/ # ip route del 0.0.0.0/1 dev ppp0
+shell@android:/ # busybox route
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+
+Deleting a non-default route:
+shell@android:/ # busybox route
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+default         *               128.0.0.0       U     0      0        0 ppp0
+default         10.73.52.1      0.0.0.0         UG    0      0        0 rmnet0
+10.73.52.0      *               255.255.255.0   U     0      0        0 rmnet0
+10.73.52.1      *               255.255.255.255 UH    0      0        0 rmnet0
+128.0.0.0       *               128.0.0.0       U     0      0        0 ppp0
+192.168.0.1     *               255.255.255.255 UH    0      0        0 ppp0
+shell@android:/ # ip route del 128.0.0.0/1 dev ppp0
+shell@android:/ # busybox route
+Kernel IP routing table
+Destination     Gateway         Genmask         Flags Metric Ref    Use Iface
+default         *               128.0.0.0       U     0      0        0 ppp0
+default         10.206.104.1    0.0.0.0         UG    0      0        0 rmnet0
+10.206.104.0    *               255.255.255.0   U     0      0        0 rmnet0
+10.206.104.1    *               255.255.255.255 UH    0      0        0 rmnet0
+192.168.0.1     *               255.255.255.255 UH    0      0        0 ppp0
+
+kill -15 $(pidof pppd) 
+seems to be a more graceful way to kill the VPN connection and delete routes
+
+ifconfig ppp0 unplumb 
+will remove the ppp0 interface from netcfg
